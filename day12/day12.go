@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 )
 
 func checkPlant(plants []byte, plantMap [][]byte) byte {
@@ -20,6 +22,23 @@ func checkPlant(plants []byte, plantMap [][]byte) byte {
 		}
 	}
 	return 0
+}
+
+func printPlants(plants []byte, gen, center int) {
+	first, last := -1, -1
+	for i, c := range plants {
+		if c == '#' {
+			if first < 0 {
+				first = i
+			}
+			last = i
+		}
+	}
+	if center < first {
+		first = center
+	}
+	fmt.Println(gen, string(plants[first:last]))
+	fmt.Println(strings.Repeat(" ", center-first+len(strconv.Itoa(gen))), "^")
 }
 
 func main() {
@@ -37,7 +56,7 @@ func main() {
 	for i, c := range initialState {
 		plants[center+i] = c
 	}
-	// fmt.Println("0", string(plants))
+	printPlants(plants, 0, center)
 
 	var plantMap [][]byte
 	for scanner.Scan() {
@@ -61,7 +80,7 @@ func main() {
 				nextGen[j] = out
 			}
 		}
-		// fmt.Println(i+1, string(nextGen))
+		printPlants(plants, i+1, center)
 		plants = nextGen
 
 		if i == 19 {
