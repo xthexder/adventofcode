@@ -11,8 +11,23 @@ import (
 
 var data [2000][2000]byte
 
-var minx, maxx int = -1, -1
-var miny, maxy int = -1, -1
+var minx, maxx int = 2000, 0
+var miny, maxy int = 2000, 0
+
+func minmax(x, y int) {
+	if x < minx {
+		minx = x
+	}
+	if x > maxx {
+		maxx = x
+	}
+	if y < miny {
+		miny = y
+	}
+	if y > maxy {
+		maxy = y
+	}
+}
 
 func open(x, y int) bool {
 	return data[x][y] == 0 || data[x][y] == '|'
@@ -27,12 +42,12 @@ func fill(x, y int) {
 
 	if !open(x, y+1) {
 		leftX := x
-		for leftX >= minx && open(leftX, y) && !open(leftX, y+1) {
+		for open(leftX, y) && !open(leftX, y+1) {
 			data[leftX][y] = '|'
 			leftX--
 		}
 		rightX := x + 1
-		for rightX <= maxx && open(rightX, y) && !open(rightX, y+1) {
+		for open(rightX, y) && !open(rightX, y+1) {
 			data[rightX][y] = '|'
 			rightX++
 		}
@@ -67,35 +82,13 @@ func main() {
 		bmin, _ := strconv.Atoi(bstr[0])
 		bmax, _ := strconv.Atoi(bstr[1])
 		if line[0][0] == 'x' {
-			if minx < 0 || a < minx {
-				minx = a
-			}
-			if maxx < 0 || a > maxx {
-				maxx = a
-			}
-			if miny < 0 || bmin < miny {
-				miny = bmin
-			}
-			if maxy < 0 || bmax > maxy {
-				maxy = bmax
-			}
 			for y := bmin; y <= bmax; y++ {
+				minmax(a, y)
 				data[a][y] = '#'
 			}
 		} else {
-			if minx < 0 || bmin < minx {
-				minx = bmin
-			}
-			if maxx < 0 || bmax > maxx {
-				maxx = bmax
-			}
-			if miny < 0 || a < miny {
-				miny = a
-			}
-			if maxy < 0 || a > maxy {
-				maxy = a
-			}
 			for x := bmin; x <= bmax; x++ {
+				minmax(x, a)
 				data[x][a] = '#'
 			}
 		}
@@ -115,6 +108,7 @@ func main() {
 		}
 	}
 
+	// Print board
 	for y := miny - 1; y <= maxy; y++ {
 		for x := minx - 1; x <= maxx+1; x++ {
 			if x == 500 && y == miny-1 {
