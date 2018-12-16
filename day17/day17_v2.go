@@ -11,8 +11,7 @@ import (
 
 var data [2000][2000]byte
 
-var minx, maxx int = -1, -1
-var miny, maxy int = -1, -1
+var miny, maxy int = 2000, 0
 
 func open(x, y int) bool {
 	return data[x][y] == 0 || data[x][y] == '|'
@@ -27,12 +26,12 @@ func fill(x, y int) {
 
 	if !open(x, y+1) {
 		leftX := x
-		for leftX >= minx && open(leftX, y) && !open(leftX, y+1) {
+		for open(leftX, y) && !open(leftX, y+1) {
 			data[leftX][y] = '|'
 			leftX--
 		}
 		rightX := x + 1
-		for rightX <= maxx && open(rightX, y) && !open(rightX, y+1) {
+		for open(rightX, y) && !open(rightX, y+1) {
 			data[rightX][y] = '|'
 			rightX++
 		}
@@ -67,32 +66,20 @@ func main() {
 		bmin, _ := strconv.Atoi(bstr[0])
 		bmax, _ := strconv.Atoi(bstr[1])
 		if line[0][0] == 'x' {
-			if minx < 0 || a < minx {
-				minx = a
-			}
-			if maxx < 0 || a > maxx {
-				maxx = a
-			}
-			if miny < 0 || bmin < miny {
+			if bmin < miny {
 				miny = bmin
 			}
-			if maxy < 0 || bmax > maxy {
+			if bmax > maxy {
 				maxy = bmax
 			}
 			for y := bmin; y <= bmax; y++ {
 				data[a][y] = '#'
 			}
 		} else {
-			if minx < 0 || bmin < minx {
-				minx = bmin
-			}
-			if maxx < 0 || bmax > maxx {
-				maxx = bmax
-			}
-			if miny < 0 || a < miny {
+			if a < miny {
 				miny = a
 			}
-			if maxy < 0 || a > maxy {
+			if a > maxy {
 				maxy = a
 			}
 			for x := bmin; x <= bmax; x++ {
@@ -105,7 +92,7 @@ func main() {
 	fill(500, 0)
 
 	water, touched := 0, 0
-	for x := minx - 1; x <= maxx+1; x++ {
+	for x := 0; x < 2000; x++ {
 		for y := miny; y <= maxy; y++ {
 			if data[x][y] == '|' {
 				touched++
@@ -115,20 +102,6 @@ func main() {
 		}
 	}
 
-	for y := miny - 1; y <= maxy; y++ {
-		for x := minx - 1; x <= maxx+1; x++ {
-			if x == 500 && y == miny-1 {
-				fmt.Print("+")
-			} else {
-				if data[x][y] == 0 {
-					fmt.Print(".")
-				} else {
-					fmt.Print(string(data[x][y]))
-				}
-			}
-		}
-		fmt.Println()
-	}
 	fmt.Println("Part A:", water+touched)
 	fmt.Println("Part B:", water)
 }
