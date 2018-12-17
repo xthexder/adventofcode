@@ -57,13 +57,50 @@ func main() {
 		nextDistance = distance(data[0], data[1], second)
 		second++
 	}
+	second -= 2
 	fmt.Println("Closest second:", second)
 
-	// Output in CSV format to graph, velocity can be used to offset points (-2 in this case)
+	min := [2]int{
+		data[0][0] + data[0][2]*second,
+		data[0][1] + data[0][3]*second,
+	}
+	max := [2]int{
+		min[0],
+		min[1],
+	}
+	for i := 1; i < len(data); i++ {
+		x := data[i][0] + data[i][2]*second
+		y := data[i][1] + data[i][3]*second
+		if x < min[0] {
+			min[0] = x
+		}
+		if x > max[0] {
+			max[0] = x
+		}
+		if y < min[1] {
+			min[1] = y
+		}
+		if y > max[1] {
+			max[1] = y
+		}
+	}
+	width := max[0] - min[0] + 1
+	height := max[1] - min[1] + 1
+
+	grid := make([][]byte, height)
+	for y := 0; y < height; y++ {
+		grid[y] = make([]byte, width)
+		for x := 0; x < width; x++ {
+			grid[y][x] = ' '
+		}
+	}
+
 	for i := 0; i < len(data); i++ {
-		fmt.Print(data[i][0] + data[i][2]*second)
-		fmt.Print(",", data[i][1]+data[i][3]*second)
-		fmt.Print(",", data[i][2])
-		fmt.Println(",", data[i][3])
+		x := data[i][0] + data[i][2]*second - min[0]
+		y := data[i][1] + data[i][3]*second - min[1]
+		grid[y][x] = '#'
+	}
+	for y := 0; y < height; y++ {
+		fmt.Println(string(grid[y]))
 	}
 }
