@@ -51,53 +51,6 @@ func main() {
 	reader.Close()
 
 	minute := 0
-	for minute < 10 {
-		grid := data[minute%2]
-		gridOut := data[(minute+1)%2]
-		for y := 0; y < len(grid); y++ {
-			for x := 0; x < len(grid[y]); x++ {
-				switch grid[y][x] {
-				case '.':
-					if countAdjacent(x, y, grid, '|') >= 3 {
-						gridOut[y][x] = '|'
-					} else {
-						gridOut[y][x] = '.'
-					}
-				case '|':
-					if countAdjacent(x, y, grid, '#') >= 3 {
-						gridOut[y][x] = '#'
-					} else {
-						gridOut[y][x] = '|'
-					}
-				case '#':
-					lumber := countAdjacent(x, y, grid, '#')
-					trees := countAdjacent(x, y, grid, '|')
-					if lumber < 1 || trees < 1 {
-						gridOut[y][x] = '.'
-					} else {
-						gridOut[y][x] = '#'
-					}
-				}
-			}
-		}
-		minute++
-	}
-
-	treeCount, lumberCount := 0, 0
-	grid := data[minute%2]
-	for y := 0; y < len(grid); y++ {
-		fmt.Println(string(grid[y]))
-		for x := 0; x < len(grid[y]); x++ {
-			switch grid[y][x] {
-			case '|':
-				treeCount++
-			case '#':
-				lumberCount++
-			}
-		}
-	}
-	fmt.Println("Part A:", treeCount*lumberCount)
-
 	var counts []int
 	for minute < 1000 {
 		grid := data[minute%2]
@@ -128,9 +81,11 @@ func main() {
 				}
 			}
 		}
+		minute++
 
 		treeCount, lumberCount := 0, 0
 		for y := 0; y < len(gridOut); y++ {
+			// fmt.Println(string(gridOut[y]))
 			for x := 0; x < len(gridOut[y]); x++ {
 				switch gridOut[y][x] {
 				case '|':
@@ -140,8 +95,10 @@ func main() {
 				}
 			}
 		}
+		if minute == 10 {
+			fmt.Println("Part A:", treeCount*lumberCount)
+		}
 		counts = append(counts, treeCount*lumberCount)
-		minute++
 	}
 
 	for i := len(counts) - 2; i >= 0; i-- {
