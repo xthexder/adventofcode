@@ -189,11 +189,6 @@ func main() {
 
 	ip := 0
 	for ip >= 0 && ip < len(program) { // && iterations < 1000 {
-		registers[ipRegister] = ip
-		program[ip].exec(registers[:])
-		ip = registers[ipRegister]
-		ip++
-
 		// fmt.Println(registers)
 		// for a, i := range program {
 		// 	if a == ip {
@@ -203,6 +198,12 @@ func main() {
 		// 	}
 		// }
 		// fmt.Println()
+
+		registers[ipRegister] = ip
+		program[ip].exec(registers[:])
+		ip = registers[ipRegister]
+		ip++
+
 		if ip == 7 {
 			fmt.Println(registers)
 		}
