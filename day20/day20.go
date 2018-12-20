@@ -7,6 +7,8 @@ import (
 	"os"
 )
 
+const minDoors = 1000
+
 func parseRegex(regex []byte) *Node {
 	if len(regex) == 0 {
 		// fmt.Println("Blank")
@@ -49,6 +51,8 @@ func parseRegex(regex []byte) *Node {
 	return node
 }
 
+var roomCount int
+
 type Node struct {
 	value    []byte
 	children []*Node
@@ -78,10 +82,10 @@ func (n *Node) String() string {
 	return out
 }
 
-// 0: Max continuable length, 1: Max length if stopping
-func (n *Node) maxLength() [2]int {
+// 0: Length without branch, 1: Length with branch
+func (n *Node) maxLength(maxPrefix int, last byte) ([2]int, byte) {
 	if n == nil {
-		return [2]int{0, 0}
+		return [2]int{maxPrefix, maxPrefix}, last
 	}
 
 	mirror := len(n.value)%2 == 0
@@ -101,37 +105,53 @@ func (n *Node) maxLength() [2]int {
 		}
 	}
 
-	max := [2]int{0, 0}
+	if len(n.value) > 0 {
+		if last != 0 {
+			fmt.Println(string([]byte{last, n.value[0]}))
+		}
+		last = n.value[len(n.value)-1]
+	}
+
+	max := [2]int{maxPrefix, maxPrefix}
+	pathLen := len(n.value)
+	if !mirror {
+		max[0] += len(n.value)
+		max[1] += len(n.value)
+	} else {
+		max[1] += len(n.value) / 2
+		pathLen /= 2
+	}
+
+	if max[1] >= minDoors {
+		if max[1]-minDoors+1 > pathLen {
+			roomCount += pathLen
+		} else {
+			roomCount += max[1] - minDoors + 1
+		}
+	}
+
+	oldmax := max
+	oldlast := last
 	for _, c := range n.children {
-		tmp := c.maxLength()
+		tmp, tmp2 := c.maxLength(oldmax[0], oldlast)
 		if tmp[0] > max[0] {
 			max[0] = tmp[0]
+			last = tmp2
 		}
 		if tmp[1] > max[1] {
 			max[1] = tmp[1]
 		}
 	}
-	nextLen := n.next.maxLength()
-	if mirror {
-		if max[1] < len(n.value)/2 {
-			max[1] = len(n.value) / 2
-		}
-		if max[1] < max[0]+nextLen[1] {
-			max[1] = max[0] + nextLen[1]
-		}
-	} else {
-		max[0] += len(n.value)
-		max[1] += len(n.value)
-
-		if max[1] < max[0]+nextLen[1] {
-			max[1] = max[0] + nextLen[1]
-		}
+	nextLen, nextLast := n.next.maxLength(max[0], last)
+	if max[0] < nextLen[0] {
+		max[0] = nextLen[0]
+		last = nextLast
+	}
+	if max[1] < nextLen[1] {
+		max[1] = nextLen[1]
 	}
 
-	if max[0] > max[1] {
-		max[1] = max[0]
-	}
-	return max
+	return max, last
 }
 
 func main() {
@@ -151,5 +171,7 @@ func main() {
 
 	root := parseRegex(regex)
 	// fmt.Println(root)
-	fmt.Println("Part A:", root.maxLength()[1])
+	maxLen, _ := root.maxLength(0, 0)
+	fmt.Println("Part A:", maxLen[1])
+	fmt.Println("Part B:", roomCount)
 }
