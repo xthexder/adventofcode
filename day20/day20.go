@@ -7,24 +7,6 @@ import (
 	"os"
 )
 
-var minx, maxx int = 2000, 0
-var miny, maxy int = 2000, 0
-
-func minmax(x, y int) {
-	if x < minx {
-		minx = x
-	}
-	if x > maxx {
-		maxx = x
-	}
-	if y < miny {
-		miny = y
-	}
-	if y > maxy {
-		maxy = y
-	}
-}
-
 func parseRegex(regex []byte) *Node {
 	if len(regex) == 0 {
 		// fmt.Println("Blank")
@@ -71,7 +53,6 @@ type Node struct {
 	value    []byte
 	children []*Node
 	next     *Node
-	cache    map[complex64][]complex64
 }
 
 func (n *Node) String() string {
@@ -97,61 +78,64 @@ func (n *Node) String() string {
 	return out
 }
 
-func (n *Node) traverse(pos complex64, board [][]byte) []complex64 {
+// 0: Max continuable length, 1: Max length if stopping
+func (n *Node) maxLength() [2]int {
 	if n == nil {
-		return []complex64{pos}
+		return [2]int{0, 0}
 	}
-	if n.cache == nil {
-		n.cache = make(map[complex64][]complex64)
-	} else if result, ok := n.cache[pos]; ok {
-		return result
-	}
-	inPos := pos
 
-	for _, v := range n.value {
-		switch v {
+	mirror := len(n.value)%2 == 0
+	for i := 0; mirror && i < len(n.value)/2; i++ {
+		opposite := n.value[len(n.value)-i-1]
+		switch n.value[i] {
 		case 'N':
-			board[int(imag(pos)*2)-1][int(real(pos)*2)] = '-'
-			pos += -1i
+			mirror = opposite == 'S'
 		case 'S':
-			board[int(imag(pos)*2)+1][int(real(pos)*2)] = '-'
-			pos += 1i
+			mirror = opposite == 'N'
 		case 'E':
-			board[int(imag(pos)*2)][int(real(pos)*2)+1] = '|'
-			pos += 1
+			mirror = opposite == 'W'
 		case 'W':
-			board[int(imag(pos)*2)][int(real(pos)*2)-1] = '|'
-			pos += -1
+			mirror = opposite == 'E'
 		default:
 			panic("Unknown direction")
 		}
-		board[int(imag(pos)*2)][int(real(pos)*2)] = '.'
-		minmax(int(real(pos)*2), int(imag(pos)*2))
 	}
-	if len(n.children) == 0 {
-		n.cache[inPos] = n.next.traverse(pos, board)
-	} else {
-		for _, child := range n.children {
-			posList := child.traverse(pos, board)
-			for _, afterPos := range posList {
-				n.cache[inPos] = append(n.cache[inPos], n.next.traverse(afterPos, board)...)
-			}
+
+	max := [2]int{0, 0}
+	for _, c := range n.children {
+		tmp := c.maxLength()
+		if tmp[0] > max[0] {
+			max[0] = tmp[0]
 		}
-		// fmt.Println(len(n.cache[inPos]))
+		if tmp[1] > max[1] {
+			max[1] = tmp[1]
+		}
 	}
-	return n.cache[inPos]
+	nextLen := n.next.maxLength()
+	if mirror {
+		if max[1] < len(n.value)/2 {
+			max[1] = len(n.value) / 2
+		}
+		if max[1] < max[0]+nextLen[1] {
+			max[1] = max[0] + nextLen[1]
+		}
+	} else {
+		max[0] += len(n.value)
+		max[1] += len(n.value)
+
+		if max[1] < max[0]+nextLen[1] {
+			max[1] = max[0] + nextLen[1]
+		}
+	}
+
+	if max[0] > max[1] {
+		max[1] = max[0]
+	}
+	return max
 }
 
 func main() {
 	var regex []byte
-	board := make([][]byte, 2000)
-	for y := 0; y < len(board); y++ {
-		board[y] = make([]byte, 2000)
-		for x := 0; x < len(board[y]); x++ {
-			board[y][x] = '#'
-		}
-	}
-	board[1000][1000] = 'X'
 
 	reader, err := os.Open("day20.txt")
 	if err != nil {
@@ -166,10 +150,6 @@ func main() {
 	reader.Close()
 
 	root := parseRegex(regex)
-	fmt.Println(root)
-	fmt.Println(root.traverse(500+500i, board))
-
-	for y := miny - 1; y <= maxy+1; y++ {
-		fmt.Println(string(board[y][minx-1 : maxx+2]))
-	}
+	// fmt.Println(root)
+	fmt.Println("Part A:", root.maxLength()[1])
 }
