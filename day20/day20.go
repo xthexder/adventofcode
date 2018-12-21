@@ -7,7 +7,26 @@ import (
 	"os"
 )
 
-const minDoors = 1000
+var board [2000][2000]byte
+var distMap [1000][1000]int
+
+var minx, maxx int = 2000, 0
+var miny, maxy int = 2000, 0
+
+func minmax(x, y int) {
+	if x < minx {
+		minx = x
+	}
+	if x > maxx {
+		maxx = x
+	}
+	if y < miny {
+		miny = y
+	}
+	if y > maxy {
+		maxy = y
+	}
+}
 
 func parseRegex(regex []byte) *Node {
 	if len(regex) == 0 {
@@ -51,8 +70,6 @@ func parseRegex(regex []byte) *Node {
 	return node
 }
 
-var roomCount int
-
 type Node struct {
 	value    []byte
 	children []*Node
@@ -82,80 +99,62 @@ func (n *Node) String() string {
 	return out
 }
 
-// 0: Length without branch, 1: Length with branch
-func (n *Node) maxLength(maxPrefix int, last byte) ([2]int, byte) {
+func (n *Node) traverse(pos complex64) []complex64 {
 	if n == nil {
-		return [2]int{maxPrefix, maxPrefix}, last
+		return []complex64{pos}
 	}
 
-	mirror := len(n.value)%2 == 0
-	for i := 0; mirror && i < len(n.value)/2; i++ {
-		opposite := n.value[len(n.value)-i-1]
-		switch n.value[i] {
+	dist := distMap[int(imag(pos))][int(real(pos))]
+	for _, v := range n.value {
+		switch v {
 		case 'N':
-			mirror = opposite == 'S'
+			board[int(imag(pos)*2)-1][int(real(pos)*2)] = '-'
+			pos += -1i
 		case 'S':
-			mirror = opposite == 'N'
+			board[int(imag(pos)*2)+1][int(real(pos)*2)] = '-'
+			pos += 1i
 		case 'E':
-			mirror = opposite == 'W'
+			board[int(imag(pos)*2)][int(real(pos)*2)+1] = '|'
+			pos += 1
 		case 'W':
-			mirror = opposite == 'E'
+			board[int(imag(pos)*2)][int(real(pos)*2)-1] = '|'
+			pos += -1
 		default:
 			panic("Unknown direction")
 		}
-	}
-
-	if len(n.value) > 0 {
-		if last != 0 {
-			fmt.Println(string([]byte{last, n.value[0]}))
-		}
-		last = n.value[len(n.value)-1]
-	}
-
-	max := [2]int{maxPrefix, maxPrefix}
-	pathLen := len(n.value)
-	if !mirror {
-		max[0] += len(n.value)
-		max[1] += len(n.value)
-	} else {
-		max[1] += len(n.value) / 2
-		pathLen /= 2
-	}
-
-	if max[1] >= minDoors {
-		if max[1]-minDoors+1 > pathLen {
-			roomCount += pathLen
-		} else {
-			roomCount += max[1] - minDoors + 1
+		dist++
+		board[int(imag(pos)*2)][int(real(pos)*2)] = '.'
+		minmax(int(real(pos)*2), int(imag(pos)*2))
+		if distMap[int(imag(pos))][int(real(pos))] == 0 || distMap[int(imag(pos))][int(real(pos))] > dist {
+			distMap[int(imag(pos))][int(real(pos))] = dist
 		}
 	}
-
-	oldmax := max
-	oldlast := last
-	for _, c := range n.children {
-		tmp, tmp2 := c.maxLength(oldmax[0], oldlast)
-		if tmp[0] > max[0] {
-			max[0] = tmp[0]
-			last = tmp2
-		}
-		if tmp[1] > max[1] {
-			max[1] = tmp[1]
-		}
-	}
-	nextLen, nextLast := n.next.maxLength(max[0], last)
-	if max[0] < nextLen[0] {
-		max[0] = nextLen[0]
-		last = nextLast
-	}
-	if max[1] < nextLen[1] {
-		max[1] = nextLen[1]
+	if len(n.children) == 0 {
+		return n.next.traverse(pos)
 	}
 
-	return max, last
+	var ends []complex64
+	endSet := make(map[complex64]struct{})
+	for _, child := range n.children {
+		childEnds := child.traverse(pos)
+		for _, end := range childEnds {
+			endSet[end] = struct{}{}
+		}
+	}
+	for end, _ := range endSet {
+		ends = append(ends, n.next.traverse(end)...)
+	}
+	return ends
 }
 
 func main() {
 	var regex []byte
+	for y := 0; y < len(board); y++ {
+		for x := 0; x < len(board[y]); x++ {
+			board[y][x] = '#'
+		}
+	}
+	board[1000][1000] = 'X'
 
 	reader, err := os.Open("day20.txt")
 	if err != nil {
@@ -171,7 +170,26 @@ func main() {
 
 	root := parseRegex(regex)
 	// fmt.Println(root)
-	maxLen, _ := root.maxLength(0, 0)
-	fmt.Println("Part A:", maxLen[1])
-	fmt.Println("Part B:", roomCount)
+
+	root.traverse(500 + 500i)
+
+	max := 0
+	roomCount := 0
+	for y := 0; y < len(distMap); y++ {
+		for x := 0; x < len(distMap[y]); x++ {
+			dist := distMap[y][x]
+			if dist > max {
+				max = dist
+			}
+			if dist >= 1000 {
+				roomCount++
+			}
+		}
+	}
+	fmt.Println("Part A:", max)
+	fmt.Println("Part A:", roomCount)
+
+	for y := miny - 1; y <= maxy+1; y++ {
+		fmt.Println(string(board[y][minx-1 : maxx+2]))
+	}
 }
