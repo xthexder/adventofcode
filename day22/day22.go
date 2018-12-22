@@ -4,12 +4,7 @@ import "fmt"
 
 const depth = 5913
 const targetX, targetY = 8, 701
-
-const (
-	ROCKY int = iota
-	WET
-	NARROW
-)
+const buffer = 150
 
 const (
 	NOTHING int = iota
@@ -20,133 +15,119 @@ const (
 var tileChars = []string{".", "=", "|", "#"}
 var directions = [][2]int{{0, 1}, {1, 0}, {0, -1}, {-1, 0}}
 
-func erosion(index int) int {
-	return (index + depth) % 20183
-}
-
-type Point [2]int
-
-func (p Point) add(a Point) Point {
-	return Point{p[0] + a[0], p[1] + a[1]}
-}
-
-var weights [depth][depth][3]int
-var geologicIndex [depth][depth]int
-var erosionLevel [depth][depth]int
+var weights [targetX + buffer][targetY + buffer][3]int
 
 type Entry struct {
-	pos      Point
+	x, y     int
 	gear     int
 	previous *Entry
 }
 
-func (e *Entry) Weight() *int {
-	return &weights[e.pos[0]][e.pos[1]][e.gear]
-}
-
-func printBoard() {
-	for y := 0; y <= targetY+10; y++ {
-		for x := 0; x <= targetX+50; x++ {
-			if x == 0 && y == 0 {
-				fmt.Print("M")
-			} else if x == targetX && y == targetY {
-				fmt.Print("T")
-			} else {
-				fmt.Print(tileChars[erosionLevel[x][y]])
-			}
-		}
-		fmt.Println()
-	}
+func (e *Entry) Weight() int {
+	return weights[e.x][e.y][e.gear]
 }
 
 func main() {
-	for x := 0; x < depth; x++ {
+	var geologicIndex [targetX + buffer][targetY + buffer]int
+	var erosionLevel [targetX + buffer][targetY + buffer]int
+
+	for x := 0; x < len(geologicIndex); x++ {
 		geologicIndex[x][0] = x * 16807
-		erosionLevel[x][0] = erosion(geologicIndex[x][0])
-		for y := 1; y < depth; y++ {
+		erosionLevel[x][0] = (geologicIndex[x][0] + depth) % 20183
+		for y := 1; y < len(geologicIndex[x]); y++ {
 			if x == 0 {
 				geologicIndex[0][y] = y * 48271
-				erosionLevel[0][y] = erosion(geologicIndex[0][y])
+				erosionLevel[0][y] = (geologicIndex[0][y] + depth) % 20183
 			} else if x == targetX && y == targetY {
-				erosionLevel[x][y] = erosion(0)
+				erosionLevel[x][y] = depth % 20183
 			} else {
 				geologicIndex[x][y] = erosionLevel[x-1][y] * erosionLevel[x][y-1]
-				erosionLevel[x][y] = erosion(geologicIndex[x][y])
+				erosionLevel[x][y] = (geologicIndex[x][y] + depth) % 20183
 			}
 		}
 	}
 
 	var riskLevel int = 0
-	for x := 0; x < depth; x++ {
-		for y := 0; y < depth; y++ {
+	for x := 0; x < len(erosionLevel); x++ {
+		for y := 0; y < len(erosionLevel[x]); y++ {
 			erosionLevel[x][y] %= 3
-		}
-	}
-	for x := 0; x <= targetX; x++ {
-		for y := 0; y <= targetY; y++ {
-			riskLevel += erosionLevel[x][y]
+			if x <= targetX && y <= targetY {
+				riskLevel += erosionLevel[x][y]
+			}
 		}
 	}
 	fmt.Println("Part A:", riskLevel)
 
-	weights[0][0][TORCH] = 1
 	tiles := erosionLevel
-	queue := make([]*Entry, 1, 10000)
-	queue[0] = &Entry{Point{0, 0}, TORCH, nil}
+	queue := []*Entry{
+		&Entry{0, 0, TORCH, nil},
+	}
+	weights[0][0][TORCH] = 1
 
 	for len(queue) > 0 {
+		// Find the minimum weight
 		min := -1
 		for _, entry := range queue {
-			if min < 0 || *entry.Weight() < min {
-				min = *entry.Weight()
+			if min < 0 || entry.Weight() < min {
+				min = entry.Weight()
 			}
 		}
-		for {
-			startLen := len(queue)
-			for _, entry := range queue {
-				if *entry.Weight() == min {
-					if entry.pos[0] == targetX && entry.pos[1] == targetY && entry.gear == TORCH {
-						for e := entry; e != nil; e = e.previous {
-							erosionLevel[e.pos[0]][e.pos[1]] = 3
-						}
-						printBoard()
-						fmt.Println("Part B:", *entry.Weight()-1)
-						return
+
+		minCount := 0
+		for i, entry := range queue {
+			if entry.Weight() == min {
+				if entry.x == targetX && entry.y == targetY && entry.gear == TORCH {
+					// Print the path taken
+					// for e := entry; e != nil; e = e.previous {
+					// 	tiles[e.x][e.y] = 3
+					// }
+					// for y := 0; y < len(tiles[0]); y++ {
+					// 	for x := 0; x < len(tiles); x++ {
+					// 		if x == 0 && y == 0 {
+					// 			fmt.Print("M")
+					// 		} else if x == targetX && y == targetY {
+					// 			fmt.Print("T")
+					// 		} else {
+					// 			fmt.Print(tileChars[tiles[x][y]])
+					// 		}
+					// 	}
+					// 	fmt.Println()
+					// }
+					fmt.Println("Part B:", entry.Weight()-1)
+					return
+				}
+
+				for _, dir := range directions {
+					x := entry.x + dir[0]
+					y := entry.y + dir[1]
+					if x < 0 || y < 0 {
+						continue
+					} else if x >= len(tiles) || y >= len(tiles[x]) {
+						continue
 					}
 
-					for _, dir := range directions {
-						pos := entry.pos.add(dir)
-						if pos[0] < 0 || pos[1] < 0 {
-							continue
-						}
-						if entry.gear != tiles[pos[0]][pos[1]] {
-							// Don't need to change gear
-							posWeight := &weights[pos[0]][pos[1]][entry.gear]
-							if *posWeight == 0 || *posWeight > *entry.Weight()+1 {
-								*posWeight = *entry.Weight() + 1
-								queue = append(queue, &Entry{pos, entry.gear, entry})
-							}
+					if entry.gear != tiles[x][y] {
+						// Current gear can be used on this tile
+						posWeight := &weights[x][y][entry.gear]
+						if *posWeight == 0 || *posWeight > entry.Weight()+1 {
+							*posWeight = entry.Weight() + 1
+							queue = append(queue, &Entry{x, y, entry.gear, entry})
 						}
 					}
-					gear := 3 ^ (entry.gear ^ tiles[entry.pos[0]][entry.pos[1]])
-					posWeight := &weights[entry.pos[0]][entry.pos[1]][gear]
-					if *posWeight == 0 || *posWeight > *entry.Weight()+7 {
-						*posWeight = *entry.Weight() + 7
-						queue = append(queue, &Entry{entry.pos, gear, entry})
-					}
 				}
-			}
-			if len(queue) == startLen {
-				j := 0
-				for i, entry := range queue[:] {
-					if *entry.Weight() == min {
-						queue[j], queue[i] = queue[i], queue[j]
-						j++
-					}
+				// Try switching gear
+				gear := 3 ^ (entry.gear ^ tiles[entry.x][entry.y])
+				posWeight := &weights[entry.x][entry.y][gear]
+				if *posWeight == 0 || *posWeight > entry.Weight()+7 {
+					*posWeight = entry.Weight() + 7
+					queue = append(queue, &Entry{entry.x, entry.y, gear, entry})
 				}
-				queue = queue[j:]
-				break
+
+				// Move the processed entries to the beginning so they can be quickly removed
+				queue[minCount], queue[i] = queue[i], queue[minCount]
+				minCount++
 			}
 		}
+		queue = queue[minCount:]
 	}
 }
