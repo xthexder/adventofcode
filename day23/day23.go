@@ -24,18 +24,11 @@ func (n Nanobot) distance(a Nanobot) int {
 	return sum
 }
 
-func (n Nanobot) add(dir [3]int) Nanobot {
-	return Nanobot{n[0] + dir[0], n[1] + dir[1], n[2] + dir[2]}
+func (n Nanobot) add(dir [3]int, multiplier int) Nanobot {
+	return Nanobot{n[0] + dir[0]*multiplier, n[1] + dir[1]*multiplier, n[2] + dir[2]*multiplier}
 }
 
 var directions = [][3]int{
-	{0, 0, 10},
-	{0, 0, -10},
-	{0, 10, 0},
-	{0, -10, 0},
-	{10, 0, 0},
-	{-10, 0, 0},
-
 	{0, 0, 1},
 	{0, 0, -1},
 	{0, 1, 0},
@@ -44,14 +37,16 @@ var directions = [][3]int{
 	{-1, 0, 0},
 }
 
-func totalDistance(bot Nanobot, bots []Nanobot) int {
+func totalDistance(bot Nanobot, bots []Nanobot) (int, int) {
 	sum := 0
+	count := 0
 	for i := range bots {
-		if bots[i].distance(bot) > bots[i][3] {
+		if bots[i].distance(bot) <= bots[i][3] {
 			sum += bots[i].distance(bot) - bots[i][3]
+			count++
 		}
 	}
-	return sum
+	return sum, count
 }
 
 func main() {
@@ -100,30 +95,63 @@ func main() {
 	fmt.Println("Part A:", count)
 
 	pos := Nanobot{0, 0, 0, 0}
-	lastPos := pos
-	dist := totalDistance(pos, bots)
+	dist, count := totalDistance(pos, bots)
+	maxCount := count
+	maxCountPos := pos
 	moved := true
-	i := 0
+	multiplier := 100000
 	for moved {
-		if i%10000 == 0 {
-			fmt.Println(dist)
-		}
-		i++
 		moved = false
 		for _, dir := range directions {
-			newPos := pos.add(dir)
-			if newPos == lastPos {
-				continue
-			}
-			newDist := totalDistance(newPos, bots)
-			if newDist < dist {
+			newPos := pos.add(dir, multiplier)
+			newDist, newCount := totalDistance(newPos, bots)
+			if newDist < dist || (newDist == dist && newCount > count) {
 				moved = true
-				lastPos = pos
 				pos = newPos
 				dist = newDist
+				if newCount > maxCount {
+					// fmt.Println(newCount)
+					maxCount = newCount
+					maxCountPos = newPos
+				}
+				count = newCount
 				break
 			}
 		}
+		if !moved && multiplier > 1 {
+			multiplier /= 2
+			moved = true
+		}
 	}
-	fmt.Println("Part B:", pos.distance(Nanobot{0, 0, 0, 0}))
+	fmt.Println("Count: ", maxCount, maxCountPos)
+
+	moved = true
+	multiplier = 10000
+	pos = maxCountPos
+	count = maxCount
+	for moved {
+		moved = false
+		for _, dir := range directions {
+			newPos := pos.add(dir, multiplier)
+			if newPos.distance(Nanobot{0, 0, 0, 0}) >= pos.distance(Nanobot{0, 0, 0, 0}) {
+				continue
+			}
+			_, newCount := totalDistance(newPos, bots)
+			if newCount >= count {
+				moved = true
+				pos = newPos
+				if newCount > count {
+					// fmt.Println(count)
+				}
+				count = newCount
+				break
+			}
+		}
+		if !moved && multiplier > 1 {
+			multiplier--
+			moved = true
+		}
+	}
+	// This is definitely wrong, but it happened to get the right answer anyway.
+	fmt.Println("Part B:", pos.distance(Nanobot{0, 0, 0, 0}), pos, count)
 }
