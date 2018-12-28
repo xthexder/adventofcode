@@ -9,12 +9,16 @@ import (
 	"strings"
 )
 
-type Nanobot [4]int
+type Nanobot struct {
+	pos   [4]int
+	count int
+	scale int
+}
 
-func (n Nanobot) distance(a Nanobot) int {
+func (n *Nanobot) distance(a *Nanobot) int {
 	sum := 0
-	for i := range n[:3] {
-		delta := a[i] - n[i]
+	for i := range n.pos[:3] {
+		delta := a.pos[i] - n.pos[i]
 		if delta < 0 {
 			sum -= delta
 		} else {
@@ -24,33 +28,45 @@ func (n Nanobot) distance(a Nanobot) int {
 	return sum
 }
 
-func (n Nanobot) add(dir [3]int, multiplier int) Nanobot {
-	return Nanobot{n[0] + dir[0]*multiplier, n[1] + dir[1]*multiplier, n[2] + dir[2]*multiplier}
-}
-
-var directions = [][3]int{
-	{0, 0, 1},
-	{0, 0, -1},
-	{0, 1, 0},
-	{0, -1, 0},
-	{1, 0, 0},
-	{-1, 0, 0},
-}
-
-func totalDistance(bot Nanobot, bots []Nanobot) (int, int) {
+func (n *Nanobot) inArea(area *Nanobot) bool {
 	sum := 0
+	for i, p := range n.pos[:3] {
+		if p < area.pos[i] {
+			sum += area.pos[i] - p
+		} else if p >= area.pos[i]+area.scale {
+			sum += p - (area.pos[i] + area.scale - 1)
+		}
+	}
+	return sum <= n.pos[3]
+}
+
+func (n *Nanobot) String() string {
+	return fmt.Sprintf("[%v count:%d scale:%d]", n.pos, n.count, n.scale)
+}
+
+func findMax(queue []*Nanobot) ([]*Nanobot, []*Nanobot) {
+	max := 0
+	for _, bot := range queue {
+		if bot.count > max {
+			max = bot.count
+		}
+	}
+
 	count := 0
-	for i := range bots {
-		if bots[i].distance(bot) <= bots[i][3] {
-			sum += bots[i].distance(bot) - bots[i][3]
+	for i, bot := range queue {
+		if bot.count == max {
+			// Move the processed entries to the beginning so they can be quickly removed
+			queue[count], queue[i] = queue[i], queue[count]
 			count++
 		}
 	}
-	return sum, count
+	return queue[:count], queue[count:]
 }
 
 func main() {
-	var bots []Nanobot
+	var bots []*Nanobot
+	var min, max int
+	minmaxSet := false
 
 	reader, err := os.Open("day23.txt")
 	if err != nil {
@@ -69,9 +85,20 @@ func main() {
 				return true
 			}
 		})
-		bot := Nanobot{}
+		bot := &Nanobot{}
 		for i, field := range fields {
-			bot[i], _ = strconv.Atoi(field)
+			bot.pos[i], _ = strconv.Atoi(field)
+			if !minmaxSet {
+				min, max = bot.pos[i], bot.pos[i]
+				minmaxSet = true
+			} else if i < 3 {
+				if bot.pos[i] < min {
+					min = bot.pos[i]
+				}
+				if bot.pos[i] > max {
+					max = bot.pos[i]
+				}
+			}
 		}
 		bots = append(bots, bot)
 	}
@@ -80,78 +107,77 @@ func main() {
 	maxRange := 0
 	var maxBot *Nanobot
 	for i, bot := range bots {
-		if bot[3] > maxRange {
-			maxRange = bot[3]
-			maxBot = &bots[i]
+		if bot.pos[3] > maxRange {
+			maxRange = bot.pos[3]
+			maxBot = bots[i]
 		}
 	}
 
 	count := 0
 	for _, bot := range bots {
-		if bot.distance(*maxBot) <= maxRange {
+		if bot.distance(maxBot) <= maxRange {
 			count++
 		}
 	}
 	fmt.Println("Part A:", count)
 
-	pos := Nanobot{0, 0, 0, 0}
-	dist, count := totalDistance(pos, bots)
-	maxCount := count
-	maxCountPos := pos
-	moved := true
-	multiplier := 100000
-	for moved {
-		moved = false
-		for _, dir := range directions {
-			newPos := pos.add(dir, multiplier)
-			newDist, newCount := totalDistance(newPos, bots)
-			if newDist < dist || (newDist == dist && newCount > count) {
-				moved = true
-				pos = newPos
-				dist = newDist
-				if newCount > maxCount {
-					// fmt.Println(newCount)
-					maxCount = newCount
-					maxCountPos = newPos
-				}
-				count = newCount
+	var list []*Nanobot
+	queue := []*Nanobot{
+		&Nanobot{
+			pos:   [4]int{min, min, min, 0},
+			scale: max - min + 1,
+		},
+	}
+	for len(queue) > 0 {
+		list, queue = findMax(queue)
+		// fmt.Println("List:", list)
+		// fmt.Println("Queue:", len(queue))
+		done := true
+		for _, bot := range list {
+			if bot.scale > 1 {
+				done = false
 				break
 			}
 		}
-		if !moved && multiplier > 1 {
-			multiplier /= 2
-			moved = true
+		if done {
+			closest := list[0]
+			for _, test := range list[1:] {
+				if test.distance(&Nanobot{}) < closest.distance(&Nanobot{}) {
+					closest = test
+				}
+			}
+			fmt.Println("Part B point:", closest)
+			fmt.Println("Part B:", closest.distance(&Nanobot{}))
+			return
 		}
-	}
-	fmt.Println("Count: ", maxCount, maxCountPos)
-
-	moved = true
-	multiplier = 10000
-	pos = maxCountPos
-	count = maxCount
-	for moved {
-		moved = false
-		for _, dir := range directions {
-			newPos := pos.add(dir, multiplier)
-			if newPos.distance(Nanobot{0, 0, 0, 0}) >= pos.distance(Nanobot{0, 0, 0, 0}) {
+		for _, bot := range list {
+			if bot.scale <= 1 {
+				queue = append(queue, bot)
 				continue
+			} else {
+				bot.scale = (bot.scale + 1) / 2
 			}
-			_, newCount := totalDistance(newPos, bots)
-			if newCount >= count {
-				moved = true
-				pos = newPos
-				if newCount > count {
-					// fmt.Println(count)
+			// fmt.Println("For:", bot)
+			for x := 0; x <= bot.scale; x += bot.scale {
+				for y := 0; y <= bot.scale; y += bot.scale {
+					for z := 0; z <= bot.scale; z += bot.scale {
+						test := &Nanobot{
+							pos:   [4]int{bot.pos[0] + x, bot.pos[1] + y, bot.pos[2] + z, 0},
+							scale: bot.scale,
+						}
+						for _, bot := range bots {
+							if bot.inArea(test) {
+								test.count++
+							}
+						}
+						// fmt.Println(test)
+						// Optimization assuming best count includes most of the bots
+						if test.count >= len(bots)/2 {
+							queue = append(queue, test)
+						}
+					}
 				}
-				count = newCount
-				break
 			}
-		}
-		if !moved && multiplier > 1 {
-			multiplier--
-			moved = true
 		}
 	}
-	// This is definitely wrong, but it happened to get the right answer anyway.
-	fmt.Println("Part B:", pos.distance(Nanobot{0, 0, 0, 0}), pos, count)
 }
