@@ -146,9 +146,9 @@ func main() {
 	var game arcade
 	game.input = make(chan int)
 	game.output = make(chan int)
-	screen := make([][]int, 1000)
+	screen := make([][]int, 50)
 	for i := range screen {
-		screen[i] = make([]int, 1000)
+		screen[i] = make([]int, 50)
 	}
 	done := make(chan struct{})
 	go func() {
@@ -180,7 +180,7 @@ func main() {
 
 	program[0] = 2
 	for i := range screen {
-		screen[i] = make([]int, 1000)
+		screen[i] = make([]int, 50)
 	}
 
 	done = make(chan struct{})
@@ -206,6 +206,24 @@ func main() {
 			case <-done:
 				return
 			case game.input <- dir:
+				// Uncomment to visualize game
+				// print("\033[H\033[2J")
+				// for _, line := range screen {
+				// 	for _, block := range line {
+				// 		if block == 0 {
+				// 			fmt.Print(" ")
+				// 		} else if block == 1 {
+				// 			fmt.Print("#")
+				// 		} else if block == 2 {
+				// 			fmt.Print("B")
+				// 		} else if block == 3 {
+				// 			fmt.Print("=")
+				// 		} else if block == 4 {
+				// 			fmt.Print("@")
+				// 		}
+				// 	}
+				// 	fmt.Println()
+				// }
 			case x := <-game.output:
 				y := <-game.output
 				tile := <-game.output
