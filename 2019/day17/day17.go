@@ -123,6 +123,53 @@ func (a *camera) Output(out int) {
 	a.output <- out
 }
 
+func read(view [][]byte, x, y int) byte {
+	if x < 0 || y < 0 || y >= len(view) || x >= len(view[y]) {
+		return '.'
+	}
+	return view[y][x]
+}
+
+func splitPath(path string) (string, string, string, string) {
+	for i := 1; i < 20; i++ {
+		if i >= len(path) || path[i] != ',' {
+			continue
+		}
+		a := path[:i]
+		for offsetJ := i + 1; offsetJ < len(path); offsetJ++ {
+			if path[offsetJ-1] != ',' {
+				continue
+			}
+			for j := 1; j < 20; j++ {
+				if offsetJ+j >= len(path) || path[offsetJ+j] != ',' {
+					continue
+				}
+				b := path[offsetJ : offsetJ+j]
+				for offsetK := offsetJ + j + 1; offsetK < len(path); offsetK++ {
+					if path[offsetK-1] != ',' {
+						continue
+					}
+					for k := 1; k < 20; k++ {
+						if offsetK+k >= len(path) || path[offsetK+k] != ',' {
+							continue
+						}
+						c := path[offsetK : offsetK+k]
+
+						main := strings.ReplaceAll(path, a, "A")
+						main = strings.ReplaceAll(main, b, "B")
+						main = strings.ReplaceAll(main, c, "C")
+
+						if !strings.ContainsAny(main, "LR0123456789") {
+							return main, a, b, c
+						}
+					}
+				}
+			}
+		}
+	}
+	return "", "", "", ""
+}
+
 func main() {
 	var program []int
 
@@ -179,12 +226,12 @@ func main() {
 		fmt.Println(string(line))
 	}
 
-	// var pos complex64 = 0
-	// var dir complex64 = 0
+	posX, posY := 0, 0
+	dirX, dirY := 0, 0
 	total := 0
 	for y, line := range view {
 		if y > 0 && y < len(view)-1 {
-			for x := range line {
+			for x, ch := range line {
 				if x > 0 && x < len(line)-1 {
 					intersection := true
 					for i := -1; i < 2; i++ {
@@ -196,38 +243,56 @@ func main() {
 						total += x * y
 					}
 				}
-				// if ch == '^' {
-				// 	pos = complex(float32(x), float32(y))
-				// 	dir = -1i
-				// } else if ch == '>' {
-				// 	pos = complex(float32(x), float32(y))
-				// 	dir = 1
-				// } else if ch == 'v' {
-				// 	pos = complex(float32(x), float32(y))
-				// 	dir = 1i
-				// } else if ch == '<' {
-				// 	pos = complex(float32(x), float32(y))
-				// 	dir = -1
-				// }
+				if ch == '^' {
+					posX, posY = x, y
+					dirY = -1
+				} else if ch == '>' {
+					posX, posY = x, y
+					dirX = 1
+				} else if ch == 'v' {
+					posX, posY = x, y
+					dirY = 1
+				} else if ch == '<' {
+					posX, posY = x, y
+					dirX = -1
+				}
 			}
 		}
 	}
 	fmt.Println("Part 1:", total)
 
-	// path := ""
-	// for {
-	// 	frontX := int(real(pos+dir))
-	// 	frontY := int(imag(pos+dir))
-	// 	line, ok := view[frontY]
-	// 	if !ok {
-	// 		line = []byte{}
-	// 	}
-	// 	if front, ok := line[frontX]; ok && front == '#' {
-	// 		pos +=
-	// 	}
+	path := []string{}
+	for {
+		count := 0
+		for read(view, posX+dirX, posY+dirY) == '#' {
+			count++
+			posX += dirX
+			posY += dirY
+		}
+		if count > 0 {
+			path = append(path, strconv.Itoa(count))
+		}
 
-	// 	if view[frontY][frontX]
-	// }
+		left := complex(float32(dirX), float32(dirY)) * -1i
+		right := complex(float32(dirX), float32(dirY)) * 1i
+		if read(view, posX+int(real(left)), posY+int(imag(left))) == '#' {
+			dirX = int(real(left))
+			dirY = int(imag(left))
+			path = append(path, "L")
+		} else if read(view, posX+int(real(right)), posY+int(imag(right))) == '#' {
+			dirX = int(real(right))
+			dirY = int(imag(right))
+			path = append(path, "R")
+		} else {
+			break
+		}
+	}
+	main, a, b, c := splitPath(strings.Join(path, ","))
+	// fmt.Println("Path:", strings.Join(path, ","))
+	// fmt.Println("Main:", main)
+	// fmt.Println("A:", a)
+	// fmt.Println("B:", b)
+	// fmt.Println("C:", c)
 
 	program[0] = 2
 	done = make(chan struct{})
@@ -235,13 +300,6 @@ func main() {
 		run(program, &io)
 		close(done)
 	}()
-
-	// Counted manually, lol
-	// R,8,L,10,L,12,R,4,R,8,L,12,R,4,R,4,R,8,L,10,L,12,R,4,R,8,L,10,R,8,R,8,L,10,L,12,R,4,R,8,L,12,R,4,R,4,R,8,L,10,R,8,R,8,L,12,R,4,R,4,R,8,L,10,R,8,R,8,L,12,R,4,R,4
-	main := "B,A,B,C,B,A,C,A,C,A"
-	a := "R,8,L,12,R,4,R,4"
-	b := "R,8,L,10,L,12,R,4"
-	c := "R,8,L,10,R,8"
 
 	go func() {
 		for _, ch := range main {
@@ -266,17 +324,16 @@ func main() {
 
 		io.input <- int('n')
 		io.input <- '\n'
-		fmt.Println("Done input")
 	}()
 
-	// fmt.Println("Part 2:", <-io.output)
 	for {
 		select {
 		case <-done:
 			return
 		case ch := <-io.output:
 			if ch > 127 {
-				fmt.Println(ch)
+				fmt.Println("Part 2:", ch)
+				return
 			}
 		}
 	}
