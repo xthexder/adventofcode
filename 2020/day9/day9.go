@@ -28,6 +28,7 @@ func main() {
 	}
 	reader.Close()
 
+	invalid := 0
 	numbers := make(map[int]struct{})
 	for i := 0; i < preamble; i++ {
 		numbers[data[i]] = struct{}{}
@@ -43,13 +44,13 @@ func main() {
 		}
 		if !found {
 			fmt.Println("Part 1:", data[i])
+			invalid = data[i]
 			break
 		}
 		delete(numbers, data[i-preamble])
 		numbers[data[i]] = struct{}{}
 	}
 
-	invalid := 15690279
 	start := 0
 	for i := 0; i < len(data); i++ {
 		if invalid == 0 {
