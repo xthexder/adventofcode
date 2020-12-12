@@ -11,23 +11,19 @@ import (
 
 type instruction struct {
 	op    byte
-	value int
+	value float32
 }
 
-func (instr *instruction) Exec(pos *[2]int, dir *complex64) {
+func (instr *instruction) Exec(pos, dir *complex64) {
 	switch instr.op {
 	case 'N':
-		pos[1] -= instr.value
-		// *dir = -1i
+		*pos -= complex(0, instr.value)
 	case 'S':
-		pos[1] += instr.value
-		// *dir = 1i
+		*pos += complex(0, instr.value)
 	case 'E':
-		pos[0] += instr.value
-		// *dir = 1
+		*pos += complex(instr.value, 0)
 	case 'W':
-		pos[0] -= instr.value
-		// *dir = -1
+		*pos -= complex(instr.value, 0)
 	case 'L', 'R':
 		if instr.value == 180 {
 			*dir *= -1
@@ -42,22 +38,21 @@ func (instr *instruction) Exec(pos *[2]int, dir *complex64) {
 			}
 		}
 	case 'F':
-		pos[0] += int(real(*dir)) * instr.value
-		pos[1] += int(imag(*dir)) * instr.value
+		*pos += *dir * complex(instr.value, 0)
 	}
-	// fmt.Println(string(instr.op), instr.value, *pos, *dir)
+	fmt.Println(string(instr.op), instr.value, *pos, *dir)
 }
 
-func (instr *instruction) Exec2(pos *[2]int, waypoint *complex64) {
+func (instr *instruction) Exec2(pos, waypoint *complex64) {
 	switch instr.op {
 	case 'N':
-		*waypoint -= complex(float32(0), float32(instr.value))
+		*waypoint -= complex(0, instr.value)
 	case 'S':
-		*waypoint += complex(float32(0), float32(instr.value))
+		*waypoint += complex(0, instr.value)
 	case 'E':
-		*waypoint += complex(float32(instr.value), float32(0))
+		*waypoint += complex(instr.value, 0)
 	case 'W':
-		*waypoint -= complex(float32(instr.value), float32(0))
+		*waypoint -= complex(instr.value, 0)
 	case 'L', 'R':
 		if instr.value == 180 {
 			*waypoint *= -1
@@ -72,10 +67,9 @@ func (instr *instruction) Exec2(pos *[2]int, waypoint *complex64) {
 			}
 		}
 	case 'F':
-		pos[0] += int(real(*waypoint)) * instr.value
-		pos[1] += int(imag(*waypoint)) * instr.value
+		*pos += *waypoint * complex(instr.value, 0)
 	}
-	// fmt.Println(string(instr.op), instr.value, *pos, *waypoint)
+	fmt.Println(string(instr.op), instr.value, *pos, *waypoint)
 }
 
 func main() {
@@ -91,26 +85,26 @@ func main() {
 		line := scanner.Text()
 		if len(line) > 0 {
 			value, _ := strconv.Atoi(line[1:])
-			data = append(data, instruction{line[0], value})
+			data = append(data, instruction{line[0], float32(value)})
 		}
 	}
 	reader.Close()
 
-	var pos [2]int
+	var pos complex64
 	var dir complex64 = 1
 
 	for _, instr := range data {
 		instr.Exec(&pos, &dir)
 	}
 
-	fmt.Println("Part 1:", math.Abs(float64(pos[0]))+math.Abs(float64(pos[1])))
+	fmt.Println("Part 1:", math.Abs(float64(real(pos)))+math.Abs(float64(imag(pos))))
 
-	pos = [2]int{0, 0}
-	dir = complex(float32(10), float32(-1))
+	pos = 0
+	dir = 10 - 1i
 
 	for _, instr := range data {
 		instr.Exec2(&pos, &dir)
 	}
 
-	fmt.Println("Part 2:", math.Abs(float64(pos[0]))+math.Abs(float64(pos[1])))
+	fmt.Println("Part 2:", math.Abs(float64(real(pos)))+math.Abs(float64(imag(pos))))
 }
