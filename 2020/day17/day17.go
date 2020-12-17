@@ -194,17 +194,17 @@ func main() {
 	fmt.Println("Part 1:", total)
 
 	var boardA2, boardB2 [][][][]byte
-	boardA2 = make([][][][]byte, 1+iterations*4)
-	boardB2 = make([][][][]byte, 1+iterations*4)
+	boardA2 = make([][][][]byte, 1+iterations*2+2)
+	boardB2 = make([][][][]byte, 1+iterations*2+2)
 	for w := range boardA2 {
-		boardA2[w] = make([][][]byte, 1+iterations*4)
-		boardB2[w] = make([][][]byte, 1+iterations*4)
+		boardA2[w] = make([][][]byte, 1+iterations*2+2)
+		boardB2[w] = make([][][]byte, 1+iterations*2+2)
 		for z := range boardA2[w] {
-			boardA2[w][z] = make([][]byte, len(init)+iterations*4)
-			boardB2[w][z] = make([][]byte, len(init)+iterations*4)
+			boardA2[w][z] = make([][]byte, len(init)+iterations*2+2)
+			boardB2[w][z] = make([][]byte, len(init)+iterations*2+2)
 			for y := range boardA2[w][z] {
-				boardA2[w][z][y] = make([]byte, len(init[0])+iterations*4)
-				boardB2[w][z][y] = make([]byte, len(init[0])+iterations*4)
+				boardA2[w][z][y] = make([]byte, len(init[0])+iterations*2+2)
+				boardB2[w][z][y] = make([]byte, len(init[0])+iterations*2+2)
 				for x := range boardA2[w][z][y] {
 					boardA2[w][z][y][x] = '.'
 					boardB2[w][z][y][x] = '.'
@@ -214,7 +214,7 @@ func main() {
 	}
 	for y := range init {
 		for x, value := range init[y] {
-			boardA2[iterations*2][iterations*2][y+iterations*2][x+iterations*2] = value
+			boardA2[iterations+1][iterations+1][y+iterations+1][x+iterations+1] = value
 		}
 	}
 
