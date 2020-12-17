@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"math"
 	"os"
 )
 
@@ -87,8 +88,8 @@ func advance(cur, prev [][][]byte) {
 }
 
 func advance2(cur, prev [][][][]byte) {
-	for w := 1; w < len(prev)-1; w++ {
-		for z := 1; z < len(prev[w])-1; z++ {
+	for w := 0; w < len(prev)-1; w++ {
+		for z := 0; z < len(prev[w])-1; z++ {
 			for y := 1; y < len(prev[w][z])-1; y++ {
 				for x := 1; x < len(prev[w][z][y])-1; x++ {
 					neighbors := 0
@@ -97,7 +98,7 @@ func advance2(cur, prev [][][][]byte) {
 							for dz := -1; dz <= 1; dz++ {
 								for dw := -1; dw <= 1; dw++ {
 									if dx != 0 || dy != 0 || dz != 0 || dw != 0 {
-										if prev[w+dw][z+dz][y+dy][x+dx] == '#' {
+										if prev[int(math.Abs(float64(w+dw)))][int(math.Abs(float64(z+dz)))][y+dy][x+dx] == '#' {
 											neighbors++
 										}
 									}
@@ -194,11 +195,11 @@ func main() {
 	fmt.Println("Part 1:", total)
 
 	var boardA2, boardB2 [][][][]byte
-	boardA2 = make([][][][]byte, 1+iterations*2+2)
-	boardB2 = make([][][][]byte, 1+iterations*2+2)
+	boardA2 = make([][][][]byte, 1+iterations*1+1)
+	boardB2 = make([][][][]byte, 1+iterations*1+1)
 	for w := range boardA2 {
-		boardA2[w] = make([][][]byte, 1+iterations*2+2)
-		boardB2[w] = make([][][]byte, 1+iterations*2+2)
+		boardA2[w] = make([][][]byte, 1+iterations*1+1)
+		boardB2[w] = make([][][]byte, 1+iterations*1+1)
 		for z := range boardA2[w] {
 			boardA2[w][z] = make([][]byte, len(init)+iterations*2+2)
 			boardB2[w][z] = make([][]byte, len(init)+iterations*2+2)
@@ -214,7 +215,7 @@ func main() {
 	}
 	for y := range init {
 		for x, value := range init[y] {
-			boardA2[iterations+1][iterations+1][y+iterations+1][x+iterations+1] = value
+			boardA2[0][0][y+iterations+1][x+iterations+1] = value
 		}
 	}
 
@@ -233,12 +234,20 @@ func main() {
 	total = 0
 	for w := range lastBoard2 {
 		for z := range lastBoard2[w] {
+			subtotal := 0
 			for y := range lastBoard2[w][z] {
 				for _, value := range lastBoard2[w][z][y] {
 					if value == '#' {
-						total++
+						subtotal++
 					}
 				}
+			}
+			if w == 0 && z == 0 {
+				total += subtotal
+			} else if w == 0 || z == 0 {
+				total += subtotal * 2
+			} else {
+				total += subtotal * 4
 			}
 		}
 	}
